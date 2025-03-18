@@ -1,180 +1,31 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local VirtualInputManager = game:GetService("VirtualInputManager")
+-- Simple script for grinding strength and hiding frames
+local player = game:GetService("Players").LocalPlayer
+local replicatedStorage = game:GetService("ReplicatedStorage")
 
--- Global settings
-_G.EggCooldown = 1800 -- 30 minutes cooldown
-_G.LastEggTime = 0
-_G.AutoUseProteinEgg = true
-_G.FastSpeedEnabled = true
-_G.HideFramesEnabled = true
-_G.AntiAFKEnabled = true
-
--- Anti-AFK system
-local function setupAntiAFK()
-    print("Anti-AFK system activated")
-    
-    -- Connect to user input service
-    for i, v in pairs(getconnections(LocalPlayer.Idled)) do
-        v:Disable()
+-- Hide frames
+print("Attempting to hide frames...")
+for _, obj in pairs(replicatedStorage:GetChildren()) do
+    if obj.Name:match("Frame$") then
+        pcall(function()
+            obj.Visible = false
+        end)
     end
-    
-    -- Backup method using virtual input
-    task.spawn(function()
-        while _G.AntiAFKEnabled do
-            -- Simulate random movement every 5-10 minutes
-            local waitTime = math.random(300, 600)
-            task.wait(waitTime)
-            
-            -- Press a random key
-            local keys = {"W", "A", "S", "D", "Space"}
-            local randomKey = keys[math.random(1, #keys)]
-            
-            VirtualInputManager:SendKeyEvent(true, randomKey, false, game)
-            task.wait(0.1)
-            VirtualInputManager:SendKeyEvent(false, randomKey, false, game)
-            
-            print("Anti-AFK: Simulated key press to prevent timeout")
+end
+print("Frame hiding complete")
+
+-- Fast grinding function
+print("Starting strength grinding...")
+
+-- Create multiple threads for grinding
+for i = 1, 10 do
+    spawn(function()
+        while true do
+            pcall(function()
+                player.muscleEvent:FireServer("rep")
+            end)
+            wait()
         end
     end)
 end
 
--- Function to unequip all pets
-local function unequipAllPets()
-    local petsFolder = LocalPlayer.petsFolder
-    for _, folder in pairs(petsFolder:GetChildren()) do
-        if folder:IsA("Folder") then
-            for _, pet in pairs(folder:GetChildren()) do
-                ReplicatedStorage.rEvents.equipPetEvent:FireServer("unequipPet", pet)
-            end
-        end
-    end
-    task.wait(0.1)
-end
-
--- Function to equip specific pet
-local function equipPet(petName)
-    for _, pet in pairs(LocalPlayer.petsFolder.Unique:GetChildren()) do
-        if pet.Name == petName then
-            ReplicatedStorage.rEvents.equipPetEvent:FireServer("equipPet", pet)
-        end
-    end
-end
-
--- Function to check egg cooldown status and use protein egg if needed
-local function checkAndUseProteinEgg()
-    local timeSinceLastEgg = os.time() - _G.LastEggTime
-    local timeRemaining = _G.EggCooldown - timeSinceLastEgg
-    
-    -- If between 28-30 minutes remaining (just used recently), skip using egg
-    if timeRemaining >= 0 and timeRemaining <= 120 then
-        print("Egg cooldown is between 28-30 minutes remaining. Skipping egg use.")
-        return false
-    end
-    
-    -- If cooldown has elapsed (30+ minutes), use an egg
-    if timeSinceLastEgg >= _G.EggCooldown then
-        local proteinEgg = LocalPlayer.Backpack:FindFirstChild("Protein Egg")
-        if proteinEgg then
-            -- Equip the egg
-            proteinEgg.Parent = LocalPlayer.Character
-            task.wait(0.5) -- Wait longer to ensure it's equipped
-            
-            -- Get screen center position
-            local screenSize = workspace.CurrentCamera.ViewportSize
-            local centerX = screenSize.X / 2
-            local centerY = screenSize.Y / 2
-            
-            -- Click multiple times to ensure the egg is used
-            for i = 1, 3 do
-                -- Send mouse events to the center of the screen
-                VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
-                task.wait(0.1)
-                VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
-                task.wait(0.2)
-            end
-            
-            _G.LastEggTime = os.time()
-            print("Used 1 Protein Egg. Next egg will be available in 30 minutes.")
-            task.wait(1) -- Wait longer after using the egg
-            return true
-        else
-            print("No Protein Egg found in backpack.")
-        end
-    else
-        local minutesRemaining = math.floor(timeRemaining / 60)
-        local secondsRemaining = timeRemaining % 60
-        print("Egg cooldown: " .. minutesRemaining .. " minutes and " .. secondsRemaining .. " seconds remaining.")
-    end
-    
-    return false
-end
-
--- Hide all frames
-local function hideAllFrames()
-    if _G.HideFramesEnabled then
-        for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-            if obj.Name:match("Frame$") then
-                obj.Visible = false
-            end
-        end
-        print("All frames hidden")
-    end
-end
-
--- Fast Speed Grinding
-local function startFastSpeedGrinding()
-    if not _G.FastSpeedEnabled then return end
-    
-    print("Fast Speed Grinding activated")
-    
-    -- Unequip all pets first
-    unequipAllPets()
-    task.wait(0.1)
-    
-    -- Equip the Swift Samurai pet
-    equipPet("Swift Samurai")
-    
-    -- Start multiple threads for faster grinding
-    for i = 1, 16 do
-        task.spawn(function()
-            while _G.FastSpeedEnabled do
-                LocalPlayer.muscleEvent:FireServer("rep")
-                task.wait()
-            end
-        end)
-    end
-end
-
--- Initialize all systems
-task.spawn(function()
-    print("Initializing all systems...")
-    
-    -- Setup Anti-AFK
-    if _G.AntiAFKEnabled then
-        setupAntiAFK()
-    end
-    
-    -- Hide all frames
-    if _G.HideFramesEnabled then
-        hideAllFrames()
-    end
-    
-    -- Start fast speed grinding
-    if _G.FastSpeedEnabled then
-        startFastSpeedGrinding()
-    end
-    
-    -- Start auto egg system
-    if _G.AutoUseProteinEgg then
-        task.spawn(function()
-            while _G.AutoUseProteinEgg do
-                checkAndUseProteinEgg()
-                task.wait(60) -- Check every minute
-            end
-        end)
-    end
-    
-    print("All systems initialized successfully!")
-end)
+print("Grinding started successfully!")
