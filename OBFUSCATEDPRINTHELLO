@@ -193,7 +193,7 @@ pcall(function()
     wait(0.5)
     equipSwiftSamurai()
     wait(0.5)
-})
+end)
 
 -- Find the muscle event
 local muscleEvent = findMuscleEvent()
