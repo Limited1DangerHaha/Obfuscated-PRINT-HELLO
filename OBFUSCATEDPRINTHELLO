@@ -1,93 +1,221 @@
+-- Muscle Legends Fast Grinding Script for Executors
+-- Optimized for compatibility with various executors
+
+-- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
 
-print("Script starting...")
+-- Variables
+local player = Players.LocalPlayer
+local success = false
 
--- Hide frames
-for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-    if obj.Name:match("Frame$") then
-        pcall(function()
-            obj.Visible = false
-        end)
+-- Print function that works across executors
+local function output(text)
+    if printconsole then
+        printconsole(text)
+    elseif print then
+        print(text)
     end
 end
-print("Frames hidden")
 
--- Function to unequip all pets with error handling
+output("Script starting...")
+
+-- Hide frames (with protection)
+pcall(function()
+    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+        if obj.Name:match("Frame$") then
+            obj.Visible = false
+        end
+    end
+    output("Frames hidden")
+end)
+
+-- Function to find the correct path to the pets folder
+local function findPetsFolder()
+    -- Try different common paths
+    local paths = {
+        player.petsFolder,
+        player:FindFirstChild("petsFolder"),
+        player:FindFirstChild("PetsFolder"),
+        player:FindFirstChild("Pets")
+    }
+    
+    for _, path in pairs(paths) do
+        if path then
+            output("Found pets folder: " .. path.Name)
+            return path
+        end
+    end
+    
+    output("WARNING: Could not find pets folder")
+    return nil
+end
+
+-- Function to find the unique pets folder
+local function findUniquePetsFolder(petsFolder)
+    if not petsFolder then return nil end
+    
+    -- Try different common paths
+    local paths = {
+        petsFolder:FindFirstChild("Unique"),
+        petsFolder:FindFirstChild("unique"),
+        petsFolder:FindFirstChild("Legendary"),
+        petsFolder
+    }
+    
+    for _, path in pairs(paths) do
+        if path then
+            output("Found unique pets folder: " .. path.Name)
+            return path
+        end
+    end
+    
+    output("WARNING: Could not find unique pets folder")
+    return petsFolder -- Return the main folder as fallback
+end
+
+-- Function to unequip all pets
 local function unequipAllPets()
-    print("Unequipping all pets...")
+    output("Attempting to unequip all pets...")
+    
+    local petsFolder = findPetsFolder()
+    if not petsFolder then return false end
+    
+    -- Try to find the unequip event
+    local equipEvent = nil
     pcall(function()
-        for _, folder in pairs(LocalPlayer.petsFolder:GetChildren()) do
-            if folder:IsA("Folder") then
+        equipEvent = ReplicatedStorage.rEvents.equipPetEvent
+    end)
+    
+    if not equipEvent then
+        pcall(function()
+            equipEvent = ReplicatedStorage:FindFirstChild("rEvents"):FindFirstChild("equipPetEvent")
+        end)
+    end
+    
+    if not equipEvent then
+        output("WARNING: Could not find equip pet event")
+        return false
+    end
+    
+    -- Try to unequip pets
+    local unequipped = false
+    pcall(function()
+        for _, folder in pairs(petsFolder:GetChildren()) do
+            if folder:IsA("Folder") or folder:IsA("Model") then
                 for _, pet in pairs(folder:GetChildren()) do
-                    ReplicatedStorage.rEvents.equipPetEvent:FireServer("unequipPet", pet)
+                    equipEvent:FireServer("unequipPet", pet)
+                    unequipped = true
                 end
             end
         end
     end)
-    wait(0.5) -- Give more time for unequipping to complete
-    print("Pets unequipped")
+    
+    wait(0.5)
+    output(unequipped and "Pets unequipped" or "No pets to unequip")
+    return unequipped
 end
 
--- Function to equip Swift Samurai pet with detailed logging
+-- Function to equip Swift Samurai pet
 local function equipSwiftSamurai()
-    print("Attempting to equip Swift Samurai...")
+    output("Attempting to equip Swift Samurai...")
     
-    -- Check if petsFolder exists
-    if not LocalPlayer:FindFirstChild("petsFolder") then
-        print("ERROR: petsFolder not found in LocalPlayer")
-        return false
+    local petsFolder = findPetsFolder()
+    if not petsFolder then return false end
+    
+    local uniqueFolder = findUniquePetsFolder(petsFolder)
+    if not uniqueFolder then return false end
+    
+    -- Try to find the equip event
+    local equipEvent = nil
+    pcall(function()
+        equipEvent = ReplicatedStorage.rEvents.equipPetEvent
+    end)
+    
+    if not equipEvent then
+        pcall(function()
+            equipEvent = ReplicatedStorage:FindFirstChild("rEvents"):FindFirstChild("equipPetEvent")
+        end)
     end
     
-    -- Check if Unique folder exists
-    if not LocalPlayer.petsFolder:FindFirstChild("Unique") then
-        print("ERROR: Unique folder not found in petsFolder")
+    if not equipEvent then
+        output("WARNING: Could not find equip pet event")
         return false
     end
     
     -- Look for Swift Samurai
     local foundPet = false
-    for _, pet in pairs(LocalPlayer.petsFolder.Unique:GetChildren()) do
-        if pet.Name == "Swift Samurai" then
-            print("Found Swift Samurai pet, equipping...")
-            ReplicatedStorage.rEvents.equipPetEvent:FireServer("equipPet", pet)
-            foundPet = true
-            break
+    pcall(function()
+        for _, pet in pairs(uniqueFolder:GetChildren()) do
+            if pet.Name == "Swift Samurai" then
+                output("Found Swift Samurai pet, equipping...")
+                equipEvent:FireServer("equipPet", pet)
+                foundPet = true
+                break
+            end
+        end
+    end)
+    
+    if not foundPet then
+        output("Swift Samurai pet not found. Will continue without it.")
+    else
+        output("Swift Samurai equipped successfully")
+    end
+    
+    return foundPet
+end
+
+-- Function to find the muscle event
+local function findMuscleEvent()
+    -- Try different common paths
+    local paths = {
+        player.muscleEvent,
+        player:FindFirstChild("muscleEvent"),
+        player:FindFirstChild("MuscleEvent"),
+        ReplicatedStorage:FindFirstChild("muscleEvent"),
+        ReplicatedStorage:FindFirstChild("MuscleEvent")
+    }
+    
+    for _, path in pairs(paths) do
+        if path then
+            output("Found muscle event: " .. path.Name)
+            return path
         end
     end
     
-    if not foundPet then
-        print("ERROR: Swift Samurai pet not found")
-        return false
-    end
-    
-    print("Swift Samurai equipped successfully")
-    return true
-}
+    output("ERROR: Could not find muscle event")
+    return nil
+end
 
--- First unequip all pets
-unequipAllPets()
-wait(1)
+-- Try to unequip and equip pets
+pcall(function()
+    unequipAllPets()
+    wait(0.5)
+    equipSwiftSamurai()
+    wait(0.5)
+})
 
--- Then equip Swift Samurai
-local success = equipSwiftSamurai()
-wait(1)
+-- Find the muscle event
+local muscleEvent = findMuscleEvent()
+if not muscleEvent then
+    output("Cannot start grinding: muscle event not found")
+    return
+end
 
--- Start super fast grinding with more threads and no waits
-print("Starting maximum speed grinding...")
-for i = 1, 25 do -- Increased to 25 threads for maximum speed
+-- Start super fast grinding
+output("Starting maximum speed grinding...")
+for i = 1, 25 do -- 25 threads for maximum speed
     spawn(function()
         while true do
             for j = 1, 10 do -- Send 10 requests per cycle
                 pcall(function()
-                    LocalPlayer.muscleEvent:FireServer("rep")
+                    muscleEvent:FireServer("rep")
                 end)
             end
-            -- Minimal wait to prevent freezing
-            wait()
+            wait() -- Small wait to prevent crashes
         end
     end)
 end
 
-print("Grinding at maximum speed! If you don't see strength increasing rapidly, please check the console for errors.")
+output("Grinding at maximum speed! Your strength should increase rapidly.")
+success = true
