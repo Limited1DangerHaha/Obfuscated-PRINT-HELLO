@@ -104,20 +104,25 @@ task.spawn(function()
     end
 end)
 
--- Auto use protein egg
+-- Auto use protein egg - only use one egg at a time with 30-minute cooldown
 _G.AutoEgg = true
+_G.EggCooldown = 1800 -- 30 minutes cooldown between using eggs
+_G.LastEggTime = 0
+
 task.spawn(function()
     while true do
-        if _G.AutoEgg then
+        if _G.AutoEgg and os.time() - _G.LastEggTime >= _G.EggCooldown then
             local proteinEgg = LocalPlayer.Backpack:FindFirstChild("Protein Egg")
             if proteinEgg then
                 proteinEgg.Parent = LocalPlayer.Character
-                for i = 1, 5 do
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                    task.wait()
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                    task.wait(0.1)
-                end
+                
+                -- Use the egg once
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                task.wait()
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                
+                _G.LastEggTime = os.time()
+                print("Used 1 Protein Egg. Next egg will be used in 30 minutes.")
             end
         end
         task.wait(1)
