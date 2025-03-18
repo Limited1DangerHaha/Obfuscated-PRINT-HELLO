@@ -1,31 +1,93 @@
--- Simple script for grinding strength and hiding frames
-local player = game:GetService("Players").LocalPlayer
-local replicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+print("Script starting...")
 
 -- Hide frames
-print("Attempting to hide frames...")
-for _, obj in pairs(replicatedStorage:GetChildren()) do
+for _, obj in pairs(ReplicatedStorage:GetChildren()) do
     if obj.Name:match("Frame$") then
         pcall(function()
             obj.Visible = false
         end)
     end
 end
-print("Frame hiding complete")
+print("Frames hidden")
 
--- Fast grinding function
-print("Starting strength grinding...")
+-- Function to unequip all pets with error handling
+local function unequipAllPets()
+    print("Unequipping all pets...")
+    pcall(function()
+        for _, folder in pairs(LocalPlayer.petsFolder:GetChildren()) do
+            if folder:IsA("Folder") then
+                for _, pet in pairs(folder:GetChildren()) do
+                    ReplicatedStorage.rEvents.equipPetEvent:FireServer("unequipPet", pet)
+                end
+            end
+        end
+    end)
+    wait(0.5) -- Give more time for unequipping to complete
+    print("Pets unequipped")
+end
 
--- Create multiple threads for grinding
-for i = 1, 10 do
+-- Function to equip Swift Samurai pet with detailed logging
+local function equipSwiftSamurai()
+    print("Attempting to equip Swift Samurai...")
+    
+    -- Check if petsFolder exists
+    if not LocalPlayer:FindFirstChild("petsFolder") then
+        print("ERROR: petsFolder not found in LocalPlayer")
+        return false
+    end
+    
+    -- Check if Unique folder exists
+    if not LocalPlayer.petsFolder:FindFirstChild("Unique") then
+        print("ERROR: Unique folder not found in petsFolder")
+        return false
+    end
+    
+    -- Look for Swift Samurai
+    local foundPet = false
+    for _, pet in pairs(LocalPlayer.petsFolder.Unique:GetChildren()) do
+        if pet.Name == "Swift Samurai" then
+            print("Found Swift Samurai pet, equipping...")
+            ReplicatedStorage.rEvents.equipPetEvent:FireServer("equipPet", pet)
+            foundPet = true
+            break
+        end
+    end
+    
+    if not foundPet then
+        print("ERROR: Swift Samurai pet not found")
+        return false
+    end
+    
+    print("Swift Samurai equipped successfully")
+    return true
+}
+
+-- First unequip all pets
+unequipAllPets()
+wait(1)
+
+-- Then equip Swift Samurai
+local success = equipSwiftSamurai()
+wait(1)
+
+-- Start super fast grinding with more threads and no waits
+print("Starting maximum speed grinding...")
+for i = 1, 25 do -- Increased to 25 threads for maximum speed
     spawn(function()
         while true do
-            pcall(function()
-                player.muscleEvent:FireServer("rep")
-            end)
+            for j = 1, 10 do -- Send 10 requests per cycle
+                pcall(function()
+                    LocalPlayer.muscleEvent:FireServer("rep")
+                end)
+            end
+            -- Minimal wait to prevent freezing
             wait()
         end
     end)
 end
 
-print("Grinding started successfully!")
+print("Grinding at maximum speed! If you don't see strength increasing rapidly, please check the console for errors.")
