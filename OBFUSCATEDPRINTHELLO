@@ -1,1 +1,125 @@
-local IlII1IlllIlIIIIl1l="529f38d51b9b67a4" local lIl111lllI1II1Illl="454050084710467d540e550d167b14465b535046664b0147424010" local IIlllII111lII1={} local IlIIIl111l=string.char local lIl1lIIIlI=string.byte local lI1lI1l1I11I1=string.sub local I1Il1IIIIllI1I11I=table.concat local Il1I1Il111llI=table.insert local l11IIl11lllI1=math.random local I11IlIlIl1l=getfenv or function() return _ENV end local IIl1ll11lII1lII1=setmetatable local I1IllIllIIlI1lIl1II=pcall local I111lI1l1l11IIlIII=select local I1I1111IllIlIl111II=unpack or table.unpack local Ill1ll1IIII1I1Il1=tonumber local function llllll1II111I(IllI1llIllI1lI1I) local l111l1111Ill1III1Il="" for l11Il1IlIIlll=1,#IllI1llIllI1lI1I,2 do local IlllI1IlI1=Ill1ll1IIII1I1Il1(lI1lI1l1I11I1(IllI1llIllI1lI1I,l11Il1IlIIlll,l11Il1IlIIlll+1),16) l111l1111Ill1III1Il=l111l1111Ill1III1Il..IlIIIl111l(IlllI1IlI1) end return l111l1111Ill1III1Il end local function I1I11l1llll(lI1Il1lIIIl,IIllIl1I11lI1) local IIlI11IlIl1="" for l1IIllIlIIlI11=1,#lI1Il1lIIIl do local IIllIll11lI=lIl1lIIIlI(lI1lI1l1I11I1(lI1Il1lIIIl,l1IIllIlIIlI11,l1IIllIlIIlI11)) local I11Illll1l1=lIl1lIIIlI(lI1lI1l1I11I1(IIllIl1I11lI1,(l1IIllIlIIlI11-1)%#IIllIl1I11lI1+1,(l1IIllIlIIlI11-1)%#IIllIl1I11lI1+1)) IIlI11IlIl1=IIlI11IlIl1..IlIIIl111l(bit32.bxor(IIllIll11lI,I11Illll1l1)) end return IIlI11IlIl1 end local lI1Il111I11lIII11=llllll1II111I(lIl111lllI1II1Illl) local IlII11lIlII1ll=I1I11l1llll(lI1Il111I11lIII11,IlII1IlllIlIIIIl1l) local l1IlII1llIl=loadstring or load return l1IlII1llIl(IlII11lIlII1ll)()
+-- Combined script with no UI
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- Function to unequip all pets
+local function unequipAllPets()
+    local petsFolder = LocalPlayer.petsFolder
+    for _, folder in pairs(petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in pairs(folder:GetChildren()) do
+                ReplicatedStorage.rEvents.equipPetEvent:FireServer("unequipPet", pet)
+            end
+        end
+    end
+    task.wait(0.1)
+end
+
+-- Function to equip specific pet
+local function equipPet(petName)
+    unequipAllPets()
+    task.wait(0.01)
+    for _, pet in pairs(LocalPlayer.petsFolder.Unique:GetChildren()) do
+        if pet.Name == petName then
+            ReplicatedStorage.rEvents.equipPetEvent:FireServer("equipPet", pet)
+        end
+    end
+end
+
+-- Function to find machine
+local function findMachine(machineName)
+    local machine = workspace.machinesFolder:FindFirstChild(machineName)
+    if not machine then
+        for _, folder in pairs(workspace:GetChildren()) do
+            if folder:IsA("Folder") and folder.Name:find("machines") then
+                machine = folder:FindFirstChild(machineName)
+                if machine then break end
+            end
+        end
+    end
+    return machine
+end
+
+-- Function to press E key
+local function pressE()
+    VirtualInputManager:SendKeyEvent(true, "E", false, game)
+    task.wait(0.1)
+    VirtualInputManager:SendKeyEvent(false, "E", false, game)
+end
+
+-- Auto rebirth system
+task.spawn(function()
+    while true do
+        local rebirthsValue = LocalPlayer.leaderstats.Rebirths.Value
+        local strengthNeeded = 10000 + (5000 * rebirthsValue)
+        
+        if LocalPlayer.ultimatesFolder:FindFirstChild("Golden Rebirth") then
+            local goldenRebirthValue = LocalPlayer.ultimatesFolder["Golden Rebirth"].Value
+            strengthNeeded = math.floor(strengthNeeded * (1 - (goldenRebirthValue * 0.1)))
+        end
+        
+        unequipAllPets()
+        task.wait(0.1)
+        equipPet("Swift Samurai")
+        
+        while LocalPlayer.leaderstats.Strength.Value < strengthNeeded do
+            for i = 1, 10 do
+                LocalPlayer.muscleEvent:FireServer("rep")
+            end
+            task.wait()
+        end
+        
+        unequipAllPets()
+        task.wait(0.1)
+        equipPet("Tribal Overlord")
+        
+        local jungleBar = findMachine("Jungle Bar Lift")
+        if jungleBar and jungleBar:FindFirstChild("interactSeat") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = jungleBar.interactSeat.CFrame * CFrame.new(0, 3, 0)
+            repeat
+                task.wait(0.1)
+                pressE()
+            until LocalPlayer.Character.Humanoid.Sit
+        end
+        
+        local currentRebirths = LocalPlayer.leaderstats.Rebirths.Value
+        repeat
+            ReplicatedStorage.rEvents.rebirthRemote:InvokeServer("rebirthRequest")
+            task.wait(0.1)
+        until LocalPlayer.leaderstats.Rebirths.Value > currentRebirths
+        
+        task.wait()
+    end
+end)
+
+-- Hide all frames
+task.spawn(function()
+    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+        if obj.Name:match("Frame$") then
+            obj.Visible = false
+        end
+    end
+end)
+
+-- Auto use protein egg
+_G.AutoEgg = true
+task.spawn(function()
+    while true do
+        if _G.AutoEgg then
+            local proteinEgg = LocalPlayer.Backpack:FindFirstChild("Protein Egg")
+            if proteinEgg then
+                proteinEgg.Parent = LocalPlayer.Character
+                for i = 1, 5 do
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    task.wait()
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    task.wait(0.1)
+                end
+            end
+        end
+        task.wait(1)
+    end
+end)
