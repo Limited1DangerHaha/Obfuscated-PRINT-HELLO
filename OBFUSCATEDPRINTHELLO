@@ -50,6 +50,68 @@ local function pressE()
     VirtualInputManager:SendKeyEvent(false, "E", false, game)
 end
 
+-- Egg cooldown settings
+_G.EggCooldown = 1800 -- 30 minutes cooldown
+_G.LastEggTime = 0
+
+-- Function to check egg cooldown status and use protein egg if needed
+local function checkAndUseProteinEgg()
+    local timeSinceLastEgg = os.time() - _G.LastEggTime
+    local timeRemaining = _G.EggCooldown - timeSinceLastEgg
+    
+    -- If between 28-30 minutes remaining (just used recently), skip using egg
+    if timeRemaining >= 0 and timeRemaining <= 120 then
+        print("Egg cooldown is between 28-30 minutes remaining. Skipping egg use.")
+        return false
+    end
+    
+    -- If cooldown has elapsed (30+ minutes), use an egg
+    if timeSinceLastEgg >= _G.EggCooldown then
+        local proteinEgg = LocalPlayer.Backpack:FindFirstChild("Protein Egg")
+        if proteinEgg then
+            -- Equip the egg
+            proteinEgg.Parent = LocalPlayer.Character
+            task.wait(0.5) -- Wait longer to ensure it's equipped
+            
+            -- Get screen center position
+            local screenSize = workspace.CurrentCamera.ViewportSize
+            local centerX = screenSize.X / 2
+            local centerY = screenSize.Y / 2
+            
+            -- Click multiple times to ensure the egg is used
+            for i = 1, 3 do
+                -- Send mouse events to the center of the screen
+                VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
+                task.wait(0.1)
+                VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
+                task.wait(0.2)
+            end
+            
+            _G.LastEggTime = os.time()
+            print("Used 1 Protein Egg. Next egg will be available in 30 minutes.")
+            task.wait(1) -- Wait longer after using the egg
+            return true
+        else
+            print("No Protein Egg found in backpack.")
+        end
+    else
+        local minutesRemaining = math.floor(timeRemaining / 60)
+        local secondsRemaining = timeRemaining % 60
+        print("Egg cooldown: " .. minutesRemaining .. " minutes and " .. secondsRemaining .. " seconds remaining.")
+    end
+    
+    return false
+end
+
+-- Hide all frames
+task.spawn(function()
+    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+        if obj.Name:match("Frame$") then
+            obj.Visible = false
+        end
+    end
+end)
+
 -- Auto rebirth system
 task.spawn(function()
     while true do
@@ -76,6 +138,9 @@ task.spawn(function()
         task.wait(0.1)
         equipPet("Tribal Overlord")
         
+        -- Check and use protein egg before teleporting if needed
+        checkAndUseProteinEgg()
+        
         local jungleBar = findMachine("Jungle Bar Lift")
         if jungleBar and jungleBar:FindFirstChild("interactSeat") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = jungleBar.interactSeat.CFrame * CFrame.new(0, 3, 0)
@@ -92,39 +157,5 @@ task.spawn(function()
         until LocalPlayer.leaderstats.Rebirths.Value > currentRebirths
         
         task.wait()
-    end
-end)
-
--- Hide all frames
-task.spawn(function()
-    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-        if obj.Name:match("Frame$") then
-            obj.Visible = false
-        end
-    end
-end)
-
--- Auto use protein egg - only use one egg at a time with 30-minute cooldown
-_G.AutoEgg = true
-_G.EggCooldown = 1800 -- 30 minutes cooldown between using eggs
-_G.LastEggTime = 0
-
-task.spawn(function()
-    while true do
-        if _G.AutoEgg and os.time() - _G.LastEggTime >= _G.EggCooldown then
-            local proteinEgg = LocalPlayer.Backpack:FindFirstChild("Protein Egg")
-            if proteinEgg then
-                proteinEgg.Parent = LocalPlayer.Character
-                
-                -- Use the egg once
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                task.wait()
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                
-                _G.LastEggTime = os.time()
-                print("Used 1 Protein Egg. Next egg will be used in 30 minutes.")
-            end
-        end
-        task.wait(1)
     end
 end)
